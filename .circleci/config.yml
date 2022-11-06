@@ -81,8 +81,10 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Install tar & gzip packages"
-          command: yum install -y tar gzip
+          name: "Install tar, gzip & wget packages"
+          command: |
+            yum install -y tar gzip
+            apt install wget            
       - run:
           name: "Testing aws commands"
           command: |
