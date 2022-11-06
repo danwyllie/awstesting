@@ -83,8 +83,7 @@ jobs:
       - run:
           name: "Install tar, gzip & wget packages"
           command: |
-            yum install -y tar gzip
-            yum install wget            
+            yum install -y tar gzip wget
       - run:
           name: "Testing aws commands"
           command: |
