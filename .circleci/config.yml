@@ -139,6 +139,11 @@ jobs:
               echo "== kubectl found =="
               kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
             fi
+      - run:
+          name: "Create EKS cluster"
+          command: |
+            echo "== Creating EKS Cluster using eksctl =="
+            eksctl create cluster --name udacitycapstone-${CIRCLE_WORKFLOW_ID:0:7} --nodes=2 --region ${AWS_DEFAULT_REGION}
 
 #            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
 #            if [ -z "$ECRCHECK" ]
