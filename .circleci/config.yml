@@ -108,7 +108,7 @@ jobs:
             export EKSCTLCHECK=$(eksctl version)
             if [ -z "$EKSCTLCHECK" ]
             then
-              echo "== eksctl not found, downloading.."
+              echo "== eksctl not found, downloading =="
               wget https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
               echo "== create temp folder =="
               mkdir eksctl
@@ -121,6 +121,23 @@ jobs:
             else
               echo "== eksctl found =="
               eksctl version
+            fi
+      - run:
+          name: "Download kubectl"
+          command: |
+            echo "== Check version and download if missing =="
+            export KUBECTLCHECK=$(kubectl version --short --client | grep 'Client Version' | awk '{print $3}')
+            if [ -z "$KUBECTLCHECK" ]
+            then
+              echo "== kubectl not found, downloading =="
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              echo "== install kubectl =="
+              sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+              echo "== check version =="
+              kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
+            else
+              echo "== kubectl found =="
+              kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
             fi
 
 #            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
