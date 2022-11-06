@@ -91,7 +91,7 @@ jobs:
             echo "== Check variables =="
             echo "ECR Repository Name: ${ECR_REPO_NAME}"
             echo "== Run check and create if missing =="
-            aws ecr create-repository --region "${AWS_DEFAULT_REGION}" --repository-name "${ECR_REPO_NAME}"
+            echo "aws ecr create-repository --region "${AWS_DEFAULT_REGION}" --repository-name "${ECR_REPO_NAME}" !!!"
             ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
             if [ -z "$ECRCHECK" ]
             then
