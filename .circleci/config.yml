@@ -75,7 +75,7 @@ jobs:
             echo "== Sanity check of .env file =="
             cat .env
 
-  create-eks-cluster:
+  aws-testing:
     docker:
       - image: amazon/aws-cli
     steps:
@@ -86,12 +86,14 @@ jobs:
       - run:
           name: "Testing aws commands"
           command: |
-            echo "== List eks clusters =="
-            aws eks list-clusters
-            echo "== Check eksctl version =="
-            eksctl version
-            echo "== Get clusters =="
-            eksctl get cluster
+            echo "== Check AWS user =="
+            aws sts get-caller-identity
+#            echo "== List eks clusters =="
+#            aws eks list-clusters
+#            echo "== Check eksctl version =="
+#            eksctl version
+#            echo "== Get clusters =="
+#            eksctl get cluster
 
 workflows:
   default:
@@ -99,4 +101,4 @@ workflows:
       #- build-lint
       #- docker-build-upload:
       #    requires: [build-lint]
-      - create-eks-cluster
+      - aws-testing
