@@ -91,19 +91,22 @@ jobs:
             echo "== Check variables =="
             echo "ECR Repository Name: ${ECR_REPO_NAME}"
             echo "== Run check and create if missing =="
-            ECRCHECK=$(aws ecr describe-repositories --region ${AWS_DEFAULT_REGION} --repository-names ${ECR_REPO_NAME})
-            if [ -z "$ECRCHECK" ]
-            then
-              echo "== Target AWS ECR not found. Creating ECR to use =="
-              aws ecr create-repository --region $AWS_DEFAULT_REGION --repository-name $ECR_REPO_NAME
-              echo "== Checking ECR now found =="
-              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME
-              echo "== Grabbing ECR URI =="
-              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text
-            else
-              echo "== ECR Found, grabbing target URI =="
-              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text
-            fi
+            aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}"
+
+#            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
+#            if [ -z "$ECRCHECK" ]
+#            then
+#              echo "== Target AWS ECR not found. Creating ECR to use =="
+#              aws ecr create-repository --region $AWS_DEFAULT_REGION --repository-name $ECR_REPO_NAME
+#              echo "== Checking ECR now found =="
+#              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME
+#              echo "== Grabbing ECR URI =="
+#              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text
+#            else
+#              echo "== ECR Found, grabbing target URI =="
+#              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text
+#            fi
+
 #            echo "== List eks clusters =="
 #            aws eks list-clusters
 #            echo "== Check eksctl version =="
