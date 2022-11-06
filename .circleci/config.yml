@@ -112,7 +112,7 @@ jobs:
               wget https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
               mkdir eksctl
               tar -xf eksctl_Linux_amd64.tar.gz -C ./eksctl
-              sudo mv ./eksctl/eksctl /usr/local/bin
+              mv ./eksctl/eksctl /usr/local/bin
               eksctl -version
             else
               echo "== eksctl found =="
