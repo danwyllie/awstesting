@@ -110,9 +110,13 @@ jobs:
             then
               echo "== eksctl not found, downloading.."
               wget https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
+              echo "== create temp folder =="
               mkdir eksctl
+              echo "== extract the download =="
               tar -xf eksctl_Linux_amd64.tar.gz -C ./eksctl
+              echo "== move eksctl to bin =="
               mv ./eksctl/eksctl /usr/local/bin
+              echo "== check version =="
               eksctl -version
             else
               echo "== eksctl found =="
