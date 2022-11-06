@@ -100,6 +100,23 @@ jobs:
             else
               echo "== Target ECR Found, OK to proceed =="
             fi
+      - run:
+          name: "Download eksctl"
+          command: |
+            echo "== Check version and download if missing =="
+            export EKSCTLCHECK=$(eksctl version)
+            if [ -z "$EKSCTLCHECK" ]
+            then
+              echo "== eksctl not found, downloading.."
+              wget https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
+              mkdir eksctl
+              tar -xf eksctl_Linux_amd64.tar.gz -C ./eksctl
+              sudo mv ./eksctl/eksctl /usr/local/bin
+              eksctl -version
+            else
+              echo "== eksctl found =="
+              eksctl -version
+            fi
 
 #            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
 #            if [ -z "$ECRCHECK" ]
