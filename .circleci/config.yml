@@ -117,10 +117,10 @@ jobs:
               echo "== move eksctl to bin =="
               mv ./eksctl/eksctl /usr/local/bin
               echo "== check version =="
-              eksctl -version
+              eksctl version
             else
               echo "== eksctl found =="
-              eksctl -version
+              eksctl version
             fi
 
 #            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
