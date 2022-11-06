@@ -95,7 +95,8 @@ jobs:
             ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
             if [ -z "$ECRCHECK" ]
             then
-              echo "== Target ECR Not found! =="
+              echo "== Target ECR Not found! Creating required ECR... =="
+              aws ecr create-repository --region "${AWS_DEFAULT_REGION}" --repository-name "${ECR_REPO_NAME}"
             else
               echo "== Target ECR Found, OK to proceed =="
             fi
