@@ -141,9 +141,11 @@ jobs:
             fi
       - run:
           name: "Create EKS cluster"
+          no_output_timeout: 30m
           command: |
             echo "== Creating EKS Cluster using eksctl =="
-            eksctl create cluster --name udacitycapstone-${CIRCLE_WORKFLOW_ID:0:7} --nodes=2 --region ${AWS_DEFAULT_REGION}
+            eksctl create cluster -f ./eksyml/cluster.yml
+#            eksctl create cluster --name udacitycapstone-${CIRCLE_WORKFLOW_ID:0:7} --nodes=2 --region ${AWS_DEFAULT_REGION}
 
 #            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
 #            if [ -z "$ECRCHECK" ]
