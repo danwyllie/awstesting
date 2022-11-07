@@ -153,52 +153,42 @@ jobs:
             then
               export LastCluster=$ExistingBlueCluster
               export NewCluster="udacitycapstone-green"
-              echo "Existing Blue cluster found, building replacement Green cluster..."
+              echo "== Cluster Found =="
+              echo "Existing Blue found, building replacement Green..."
               echo "== Creating EKS Cluster using eksctl =="
-              eksctl create cluster -f eksyml/creategreencluster.yml
+              eksctl create cluster -f eksyml/greencluster.yml
 
             elif [[ "$ExistingGreenCluster" == *green ]]
             then
               export LastCluster=$ExistingGreenCluster
               export NewCluster="udacitycapstone-blue"
-              echo "Existing Green cluster found, building replacement Blue cluster..."
+              echo "== Cluster Found =="
+              echo "Existing Green found, building replacement Blue..."
               echo "== Creating EKS Cluster using eksctl =="
-              eksctl create cluster -f eksyml/createbluecluster.yml
+              eksctl create cluster -f eksyml/bluecluster.yml
+            else
+              echo "== No Cluster Found =="
+              echo "Building new Green..."
+              eksctl create cluster -f eksyml/greencluster.yml
             fi
-      - run:
-          name: "Test cleanup of LastCluster"
-          no_output_timeout: 30m
-          command: |
-            echo "== Checking for Last Cluster =="
-            echo "Last Cluster Deployed:" ${LastCluster}
-            echo "== Cleanup and remove old EKS Cluster =="
-            if [[ "$LastCluster" == *blue ]]
-            then
-              eksctl delete cluster -f eksyml/createbluecluster.yml
-            elif [[ "$LastCluster" == *green ]]
-            then
-              eksctl delete cluster -f eksyml/creategreencluster.yml
-            fi
+#         Need to add if neither exist, then create one            
+#      - run:
+#          name: "Test cleanup of LastCluster"
+#          no_output_timeout: 30m
+#          command: |
+#            echo "== Checking for Last Cluster =="
+#            echo "Last Cluster Deployed:" ${LastCluster}
+#            echo "== Cleanup and remove old EKS Cluster =="
+#            if [[ "$LastCluster" == *blue ]]
+#            then
+#              eksctl delete cluster -f eksyml/bluecluster.yml
+#            elif [[ "$LastCluster" == *green ]]
+#            then
+#              eksctl delete cluster -f eksyml/greencluster.yml
+#            fi
 
 #            ## Next line would configure kubectl
 #            aws eks update-kubeconfig --region ${AWS_DEFAULT_REGION} --name ${NewCluster}
-
-
-#            eksctl create cluster --name udacitycapstone-${CIRCLE_WORKFLOW_ID:0:7} --nodes=2 --region ${AWS_DEFAULT_REGION}
-
-#            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
-#            if [ -z "$ECRCHECK" ]
-#            then
-#              echo "== Target AWS ECR not found. Creating ECR to use =="
-#              aws ecr create-repository --region $AWS_DEFAULT_REGION --repository-name $ECR_REPO_NAME
-#              echo "== Checking ECR now found =="
-#              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME
-#              echo "== Grabbing ECR URI =="
-#              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text
-#            else
-#              echo "== ECR Found, grabbing target URI =="
-#              aws ecr describe-repositories --region $AWS_DEFAULT_REGION --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text
-#            fi
 
 #            echo "== List eks clusters =="
 #            aws eks list-clusters
