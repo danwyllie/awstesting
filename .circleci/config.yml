@@ -169,6 +169,7 @@ jobs:
               echo "Existing Green cluster found, building replacement Blue cluster..."
               echo "== Creating EKS Cluster using eksctl =="
               eksctl create cluster -f eksyml/createbluecluster.yml
+            fi
 
 
 #            eksctl create cluster --name udacitycapstone-${CIRCLE_WORKFLOW_ID:0:7} --nodes=2 --region ${AWS_DEFAULT_REGION}
