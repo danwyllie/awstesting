@@ -157,7 +157,6 @@ jobs:
               echo "Existing Blue found, building replacement Green..."
               echo "== Creating EKS Cluster using eksctl =="
               eksctl create cluster -f eksyml/greencluster.yml
-
             elif [[ "$ExistingGreenCluster" == *green ]]
             then
               export LastCluster=$ExistingGreenCluster
