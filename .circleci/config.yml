@@ -143,6 +143,8 @@ jobs:
           name: "Verify EKS cluster & deploy replacement"
           no_output_timeout: 30m
           command: |
+            echo "== Check AWS user after getting previous failure =="
+            aws sts get-caller-identity
             echo "== Checking for previous Blue cluster =="
             export ExistingBlueCluster=($(aws eks list-clusters --output text | grep blue | awk '{print $2}'))
             echo $ExistingBlueCluster
