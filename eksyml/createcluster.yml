@@ -6,7 +6,7 @@ metadata:
   region: us-east-1
 
 nodeGroups:
-  - name: worker-group-${WorkflowID}
+  - name: worker-group-1
     instanceType: t2.micro
     minSize: 1
     maxSize: 2
