@@ -145,7 +145,7 @@ jobs:
           command: |
             echo "== Creating EKS Cluster using eksctl =="
             ls 
-            eksctl create cluster -f eksyml/cluster.yml
+            eksctl create cluster -f eksyml/createcluster.yml
 #            eksctl create cluster --name udacitycapstone-${CIRCLE_WORKFLOW_ID:0:7} --nodes=2 --region ${AWS_DEFAULT_REGION}
 
 #            ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
