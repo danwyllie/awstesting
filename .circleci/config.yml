@@ -5,9 +5,8 @@ jobs:
       - image: circleci/python:3.7.3-stretch
     steps:
       - checkout
-
       - run:
-          name: "Setup and Install dependencies"
+          name: "Create, make and lint code"
           command: |
             python3 -m venv venv
             . venv/bin/activate
@@ -36,35 +35,14 @@ jobs:
             . venv/bin/activate
             make lint
   
-  docker-build-upload:
+  docker-build-test-upload:
     docker:
       - image: cimg/go:1.17
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: "Docker Build-Login-Upload"
-          command: |
-            echo "== Setup required .env file =="
-            touch .env
-            echo "#.env" >> ".env"
-            echo FLASK_APP=app.py >> ".env"
-            echo FLASK_DEBUG=True >> ".env"
-            echo API_KEY=$API_KEY >> ".env"
-            echo "== Sanity check of .env file =="
-            cat .env      
-            echo "== Login to docker with envirvonment variables =="
-            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            echo "== Build docker image =="
-            docker build --tag=udacitycapstone .
-            echo "== Check for image =="
-            docker image ls
-            echo "== Tag docker image for upload =="
-            docker tag udacitycapstone $DOCKERHUB_USERNAME/udacitycapstone
-            echo "== Upload docker image =="
-            docker push $DOCKERHUB_USERNAME/udacitycapstone
-      - run:
-          name: "AWS ECR Build-Login-Upload"
+          name: "Create .env file with project env variable API_KEY"
           command: |
             echo "== Setup required .env file =="
             touch .env
@@ -74,8 +52,37 @@ jobs:
             echo API_KEY=$API_KEY >> ".env"
             echo "== Sanity check of .env file =="
             cat .env
+      - run:
+          name: "Docker Login, build and tag"
+          command: |
+            echo "== Login to docker with envirvonment variables =="
+            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
+            echo "== Build docker image =="
+            docker build --tag=udacitycapstone .
+            echo "== Check for image =="
+            docker image ls --filter=reference='udacitycapstone'
+      - run:
+          name: "Test Docker image"
+          command: |
+            echo "== Launch image locally =="
+            docker run -d -p 5000:5000 capstone
+            export APPTEST=$(curl -L -s http://127.0.0.1:5000 | grep '<title>Udacity Capstone</title>')
+            if [ -z "$APPTEST" ]
+            then
+              echo "== Docker image failure, investigate and fix =="
+            else
+              echo "== Docker image webpage load successful =="
+              curl -s --head http://127.0.0.1:5000
+            fi
+      - run:
+          name: "Tag & Push image to dockerhub"
+          command: |
+            echo "== Tag docker image for upload =="
+            docker tag udacitycapstone $DOCKERHUB_USERNAME/udacitycapstone
+            echo "== Upload docker image =="
+            docker push $DOCKERHUB_USERNAME/udacitycapstone
 
-  aws-testing:
+  aws-setup:
     docker:
       - image: amazon/aws-cli
     steps:
@@ -140,38 +147,24 @@ jobs:
               kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
             fi
       - run:
-          name: "Verify EKS cluster & deploy replacement"
+          name: "Confirm EKS cluster - deploy cluster if none found"
           no_output_timeout: 30m
           command: |
-            echo "== Checking for previous Blue cluster =="
-            export ExistingBlueCluster=($(aws eks list-clusters --output text | grep blue | awk '{print $2}'))
-            echo $ExistingBlueCluster
-            echo "== Checking for previous Green cluster =="
-            export ExistingGreenCluster=($(aws eks list-clusters --output text | grep green | awk '{print $2}'))
-            echo $ExistingGreenCluster
-            if [[ "$ExistingBlueCluster" == *blue ]]
+            echo "== Checking for eks cluster =="
+            export ExistingCluster=($(aws eks list-clusters --output text | grep cluster | awk '{print $2}'))
+            echo $ExistingCluster
+            if [[ "$ExistingCluster" == *cluster ]]
             then
-              export LastCluster=$ExistingBlueCluster
-              export NewCluster="udacitycapstone-green"
               echo "== Cluster Found =="
-              echo "Existing Blue found, building replacement Green..."
-              echo "== Creating EKS Cluster using eksctl =="
-              eksctl create cluster -f eksyml/greencluster.yml
-            elif [[ "$ExistingGreenCluster" == *green ]]
-            then
-              export LastCluster=$ExistingGreenCluster
-              export NewCluster="udacitycapstone-blue"
-              echo "== Cluster Found =="
-              echo "Existing Green found, building replacement Blue..."
-              echo "== Creating EKS Cluster using eksctl =="
-              eksctl create cluster -f eksyml/bluecluster.yml
             else
               echo "== Check AWS user after getting previous failure =="
               aws sts get-caller-identity
               echo "== No Cluster Found =="
-              echo "Building new Green..."
-              eksctl create cluster -f eksyml/greencluster.yml
+              echo "Building cluster"
+              eksctl create cluster -f eksyml/cluster.yml
             fi
+      - run:
+          name: 
 #         Need to add if neither exist, then create one            
 #      - run:
 #          name: "Test cleanup of LastCluster"
@@ -201,7 +194,8 @@ jobs:
 workflows:
   default:
     jobs:
-      #- build-lint
-      #- docker-build-upload:
-      #    requires: [build-lint]
-      - aws-testing
+      - build-lint
+      - docker-build-test-upload:
+          requires: [build-lint]
+      - aws-setup:
+          requires: [docker-build-test-upload]

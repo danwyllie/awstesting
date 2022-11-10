@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udacitycapstone
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: udacitycapstone
+  template:
+    metadata:
+      labels:
+        app: udacitycapstone
+    spec:
+      containers:
+      - name: udacitycapstone
+        image: danwyllie/udacitycapstone:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: udacitycapstone
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000
+  selector:
+    app: udacitycapstone
+  type: LoadBalancer
