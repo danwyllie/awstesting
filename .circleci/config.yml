@@ -108,6 +108,7 @@ jobs:
             else
               echo "== Target ECR Found, OK to proceed =="
             fi
+#           aws ecr describe-repositories --repository-name udacitycapstone --query 'repositories[*].repositoryUri' --output text
       - run:
           name: "Download eksctl"
           command: |
