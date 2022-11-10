@@ -67,12 +67,12 @@ jobs:
             echo "== Launch image locally =="
             docker run -d -p 5000:5000 udacitycapstone
             export APPTEST=$(curl -L -s http://127.0.0.1:5000 | grep '<title>Udacity Capstone</title>')
-            if [ -z "$APPTEST" ]
+            if [[ "$APPTEST" == *Capstone* ]]
             then
-              echo "== Docker image failure, investigate and fix =="
-            else
               echo "== Docker image webpage load successful =="
               curl -s --head http://127.0.0.1:5000
+            else
+              echo "== Docker image failure, investigate and fix =="
             fi
       - run:
           name: "Tag & Push image to dockerhub"
