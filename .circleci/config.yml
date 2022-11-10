@@ -163,8 +163,6 @@ jobs:
               echo "Building cluster"
               eksctl create cluster -f eksyml/cluster.yml
             fi
-      - run:
-          name: 
 #         Need to add if neither exist, then create one            
 #      - run:
 #          name: "Test cleanup of LastCluster"
