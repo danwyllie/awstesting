@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: udacitycapstone-blue
+  namespace: default
+spec:
+  type: LoadBalancer
+  selector:
+    app: udacitycapstone-blue
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000

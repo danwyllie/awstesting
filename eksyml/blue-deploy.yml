@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udacitycapstone-blue
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: udacitycapstone-blue
+  template:
+    metadata:
+      labels:
+        app: udacitycapstone-blue
+    spec:
+      containers:
+      - name: udacitycapstone-blue
+        image: danwyllie/udacitycapstone:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000

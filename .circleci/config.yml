@@ -34,7 +34,7 @@ jobs:
           command: |
             . venv/bin/activate
             make lint
-  
+
   docker-build-test-upload:
     docker:
       - image: cimg/go:1.17
@@ -62,19 +62,6 @@ jobs:
             echo "== Check for image =="
             docker image ls --filter=reference='udacitycapstone'
       - run:
-          name: "Test Docker image"
-          command: |
-            echo "== Launch image locally =="
-            docker run -d -p 5000:5000 udacitycapstone
-            export APPTEST=$(curl -L -s http://127.0.0.1:5000 | grep '<title>Udacity Capstone</title>')
-            if [[ "$APPTEST" == *Capstone* ]]
-            then
-              echo "== Docker image webpage load successful =="
-              curl -s --head http://127.0.0.1:5000
-            else
-              echo "== Docker image failure, investigate and fix =="
-            fi
-      - run:
           name: "Tag & Push image to dockerhub"
           command: |
             echo "== Tag docker image for upload =="
@@ -82,7 +69,7 @@ jobs:
             echo "== Upload docker image =="
             docker push $DOCKERHUB_USERNAME/udacitycapstone
 
-  aws-setup:
+  eks-setup:
     docker:
       - image: amazon/aws-cli
     steps:
@@ -91,24 +78,6 @@ jobs:
           name: "Install tar, gzip & wget packages"
           command: |
             yum install -y tar gzip wget
-      - run:
-          name: "Ensure AWS ECR exists"
-          command: |
-            echo "== Check AWS user =="
-            aws sts get-caller-identity
-            echo "== Check variables =="
-            echo "ECR Repository Name: ${ECR_REPO_NAME}"
-            echo "== Run check and create if missing =="
-            echo "aws ecr create-repository --region "${AWS_DEFAULT_REGION}" --repository-name "${ECR_REPO_NAME}" !!!"
-            export ECRCHECK=$(aws ecr describe-repositories --region "${AWS_DEFAULT_REGION}" --repository-names "${ECR_REPO_NAME}")
-            if [ -z "$ECRCHECK" ]
-            then
-              echo "== Target ECR Not found! Creating required ECR... =="
-              aws ecr create-repository --region "${AWS_DEFAULT_REGION}" --repository-name "${ECR_REPO_NAME}"
-            else
-              echo "== Target ECR Found, OK to proceed =="
-            fi
-#           aws ecr describe-repositories --repository-name udacitycapstone --query 'repositories[*].repositoryUri' --output text
       - run:
           name: "Download eksctl"
           command: |
@@ -148,13 +117,13 @@ jobs:
               kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
             fi
       - run:
-          name: "Confirm EKS cluster - deploy cluster if none found"
+          name: "Confirm existing EKS cluster - deploy cluster if not found"
           no_output_timeout: 30m
           command: |
             echo "== Checking for eks cluster =="
-            export ExistingCluster=($(aws eks list-clusters --output text | grep cluster | awk '{print $2}'))
+            export ExistingCluster=($(aws eks list-clusters --output text | grep udacity | awk '{print $2}'))
             echo $ExistingCluster
-            if [[ "$ExistingCluster" == *cluster ]]
+            if [[ "$ExistingCluster" == "udacitycapstone" ]]
             then
               echo "== Cluster Found =="
             else
@@ -164,31 +133,225 @@ jobs:
               echo "Building cluster"
               eksctl create cluster -f eksyml/cluster.yml
             fi
-#         Need to add if neither exist, then create one            
-#      - run:
-#          name: "Test cleanup of LastCluster"
-#          no_output_timeout: 30m
-#          command: |
-#            echo "== Checking for Last Cluster =="
-#            echo "Last Cluster Deployed:" ${LastCluster}
-#            echo "== Cleanup and remove old EKS Cluster =="
-#            if [[ "$LastCluster" == *blue ]]
-#            then
-#              eksctl delete cluster -f eksyml/bluecluster.yml
-#            elif [[ "$LastCluster" == *green ]]
-#            then
-#              eksctl delete cluster -f eksyml/greencluster.yml
-#            fi
 
-#            ## Next line would configure kubectl
-#            aws eks update-kubeconfig --region ${AWS_DEFAULT_REGION} --name ${NewCluster}
+  deploy-app:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: "Install tar, gzip & wget packages"
+          command: |
+            yum install -y tar gzip wget
+      - run:
+          name: "Download eksctl"
+          command: |
+            echo "== Check version and download if missing =="
+            export EKSCTLCHECK=$(eksctl version)
+            if [ -z "$EKSCTLCHECK" ]
+            then
+              echo "== eksctl not found, downloading =="
+              wget https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
+              echo "== create temp folder =="
+              mkdir eksctl
+              echo "== extract the download =="
+              tar -xf eksctl_Linux_amd64.tar.gz -C ./eksctl
+              echo "== move eksctl to bin =="
+              mv ./eksctl/eksctl /usr/local/bin
+              echo "== check version =="
+              eksctl version
+            else
+              echo "== eksctl found =="
+              eksctl version
+            fi
+      - run:
+          name: "Download kubectl"
+          command: |
+            echo "== Check version and download if missing =="
+            export KUBECTLCHECK=$(kubectl version --short --client | grep 'Client Version' | awk '{print $3}')
+            if [ -z "$KUBECTLCHECK" ]
+            then
+              echo "== kubectl not found, downloading =="
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              echo "== install kubectl =="
+              install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+              echo "== check version =="
+              kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
+            else
+              echo "== kubectl found =="
+              kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
+            fi
+      - run:
+          name: "Deploy to blue/green"
+          command: |
+            echo "== Update kubeconfig =="
+            aws eks update-kubeconfig --name udacitycapstone
+            echo "== Checking last deployment =="
+            export LASTDEPLOY=$(curl -s -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/lastdeployment)
+            if [[ "$LASTDEPLOY" == green ]]
+            then
+             echo "== Last deployment was GREEN =="
+             echo "== Deploying new image to BLUE =="
+             kubectl apply -f eksyml/blue-deploy.yml
+             echo "== Waiting 60 secs =="
+             sleep 60
+             echo "== Sanity checking deployments / pods / nodes =="
+             kubectl get deployments
+             kubectl get pods
+             kubectl get nodes
+             echo "== Deploying service to BLUE =="
+             kubectl apply -f eksyml/blue-service.yml
+             echo "== Waiting 60 secs =="
+             sleep 60
+             echo "== Sanity checking services =="
+             kubectl get services
+             echo "== Store new deployment =="
+             curl -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newdeployment -d 'blue'
+             echo "== Store new LB URL for app =="
+             export AWSURL=($(kubectl get services | grep udacitycapstone | awk '{print $4}'))
+             curl -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newawsurl -d $AWSURL
+            else
+             echo "== Last deployment was BLUE =="
+             echo "== Deploying new image to GREEN =="
+             kubectl apply -f eksyml/green-deploy.yml
+             echo "== Waiting 60 secs =="
+             sleep 60
+             echo "== Sanity checking deployments / pods / nodes =="
+             kubectl get deployments
+             kubectl get pods
+             kubectl get nodes
+             echo "== Deploying service to GREEN =="
+             kubectl apply -f eksyml/green-service.yml
+             echo "== Waiting 60 secs =="
+             sleep 60
+             echo "== Sanity checking services =="
+             kubectl get services
+             echo "== Store new deployment =="
+             curl -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newdeployment -d 'green'
+             echo "== Store new LB URL for app =="
+             export AWSURL=($(kubectl get services | grep udacitycapstone | awk '{print $4}'))
+             curl -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newawsurl -d $AWSURL
+            fi
 
-#            echo "== List eks clusters =="
-#            aws eks list-clusters
-#            echo "== Check eksctl version =="
-#            eksctl version
-#            echo "== Get clusters =="
-#            eksctl get cluster
+  smoke-test:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: "Install tar, gzip & wget packages"
+          command: |
+            yum install -y tar gzip wget
+      - run:
+          name: "Smoke test new app"
+          command: |
+            echo "== Grab latest app AWS LB URL =="
+            export AWSURL=$(curl -s -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newawsurl)
+            echo "Testing: " ${AWSURL}
+            export AWSAPPTEST=$(curl -L -s $AWSURL | grep '<title>Udacity Capstone</title>')
+            if [[ "$AWSAPPTEST" == *Capstone* ]]
+            then
+             echo "== App test successful =="
+             export LASTDEPLOY=$(curl -s -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/lastdeployment)
+             echo "== Will proceed to remove old app instance =="
+             echo "Old deployment to remove is: " ${LASTDEPLOY}
+             echo "== Store new deployment =="
+             if [[ "$LASTDEPLOY" == green ]]
+             then
+              echo "New deployment is blue"
+              curl -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newdeployment -d 'blue'
+             elif [[ "$LASTDEPLOY" == blue ]]
+             then
+              echo "New deployment is green"
+              curl -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newdeployment -d 'green'
+             fi
+            else
+             echo "== App failure - please investigate =="
+            fi
+
+  clean-up-app:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: "Install tar, gzip & wget packages"
+          command: |
+            yum install -y tar gzip wget
+      - run:
+          name: "Download eksctl"
+          command: |
+            echo "== Check version and download if missing =="
+            export EKSCTLCHECK=$(eksctl version)
+            if [ -z "$EKSCTLCHECK" ]
+            then
+              echo "== eksctl not found, downloading =="
+              wget https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz
+              echo "== create temp folder =="
+              mkdir eksctl
+              echo "== extract the download =="
+              tar -xf eksctl_Linux_amd64.tar.gz -C ./eksctl
+              echo "== move eksctl to bin =="
+              mv ./eksctl/eksctl /usr/local/bin
+              echo "== check version =="
+              eksctl version
+            else
+              echo "== eksctl found =="
+              eksctl version
+            fi
+      - run:
+          name: "Download kubectl"
+          command: |
+            echo "== Check version and download if missing =="
+            export KUBECTLCHECK=$(kubectl version --short --client | grep 'Client Version' | awk '{print $3}')
+            if [ -z "$KUBECTLCHECK" ]
+            then
+              echo "== kubectl not found, downloading =="
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              echo "== install kubectl =="
+              install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+              echo "== check version =="
+              kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
+            else
+              echo "== kubectl found =="
+              kubectl version --short --client | grep 'Client Version' | awk '{print $3}'
+            fi
+      - run:
+          name: "Cleanup blue/green"
+          command: |
+            echo "== Update kubeconfig =="
+            aws eks update-kubeconfig --name udacitycapstone
+            echo "== Checking new deployment =="
+            export NEWDEPLOY=$(curl -s -k https://kvdb.io/TbCZ6YEAqpcuxmXp56GbjJ/newdeployment)
+            if [[ "$NEWDEPLOY" == green ]]
+            then
+             echo "== Deleting BLUE =="
+             kubectl delete -f eksyml/blue-service.yml
+             echo "== Wait 60 secs =="
+             sleep 60
+             kubectl delete -f eksyml/blue-deploy.yml
+             echo "== Wait 60 secs =="
+             sleep 60
+             echo "== Sanity checking deployments / pods / nodes =="
+             kubectl get deployments
+             kubectl get pods
+             kubectl get nodes
+             kubectl get services
+            elif [[ "$NEWDEPLOY" == blue ]]
+            then
+             echo "== Deleting GREEN =="
+             kubectl delete -f eksyml/green-service.yml
+             echo "== Wait 60 secs =="
+             sleep 60
+             kubectl delete -f eksyml/green-deploy.yml
+             echo "== Wait 60 secs =="
+             sleep 60
+             echo "== Sanity checking deployments / pods / nodes =="
+             kubectl get deployments
+             kubectl get pods
+             kubectl get nodes
+             kubectl get services
+            fi
 
 workflows:
   default:
@@ -196,5 +359,11 @@ workflows:
       - build-lint
       - docker-build-test-upload:
           requires: [build-lint]
-      - aws-setup:
+      - eks-setup:
           requires: [docker-build-test-upload]
+      - deploy-app:
+          requires: [eks-setup]
+      - smoke-test:
+          requires: [deploy-app]
+      - clean-up-app:
+          requires: [smoke-test]

@@ -2,12 +2,9 @@ apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 
 metadata:
-  name: "udacitycapstone-cluster"
+  name: "udacitycapstone"
   region: us-east-1
 
 nodeGroups:
   - name: "worker-group"
-    instanceType: t2.micro
-    minSize: 1
-    maxSize: 2
     desiredCapacity: 2
